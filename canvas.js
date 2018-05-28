@@ -1,5 +1,9 @@
+var WIDTH = window.innerWidth;
+var HEIGHT = window.innerHeight;
+var dx = 2; var dy = 4;
+
 function startGame(){
-	gameBall = ball(window.innerWidth/2, window.innerHeight/2);
+	gameBall = new ball(WIDTH/2, HEIGHT/2);
 	leftPlayer = new player(30, 90, 0, 0); 
 	rightPlayer = new player(30, 90, window.innerWidth-40, 0);
 	gameArea.initialize();
@@ -22,17 +26,6 @@ var gameArea = {
 function getMouseY(event){
 	leftPlayer.y = event.clientY-45;
 }
- 
-function ball(x, y){
-	this.x = x;
-	this.y = y;
-	
-	ctx = gameArea.context;
-	//ctx.fillStyle = "lime";
-	
-	//ctx.beginPath();
-	//ctx.arc(this.x,this.y,50,0,2*Math.PI);
-}
 
 function player(w, h, x, y){
 	this.width = w;
@@ -51,9 +44,38 @@ function player(w, h, x, y){
 	}
 }
 
+function ball(x, y){
+	this.x = x;
+	this.y = y;
+	
+	this.draw = function(x,y){
+		ctx = gameArea.context;
+		ctx.fillStyle = "lime";
+		
+		ctx.beginPath();
+		ctx.arc(this.x,this.y,20,0,2*Math.PI);
+		ctx.stroke();
+		ctx.fill();
+	}
+	
+	this.update = function(){
+		if (this.x + dx > WIDTH || this.x + dx < 0)
+		dx = -dx;
+		if (this.y + dy > HEIGHT || this.y + dy < 0)
+		dy = -dy;
+
+		this.x += dx;
+		this.y += dy;
+		
+		this.draw(this.x, this.y);
+	}
+
+}
+
 function updateGameArea(){
 	gameArea.clear();
 	leftPlayer.update();
-    rightPlayer.update();	
+    rightPlayer.update();
+	gameBall.update();
 }
 
