@@ -1,18 +1,18 @@
-var WIDTH = window.innerWidth;
+var WIDTH = 1000;
 var HEIGHT = window.innerHeight;
-var dx = 2; var dy = 4;
+var dx = -2; var dy = 1;
 
 function startGame(){
 	gameBall = new ball(WIDTH/2, HEIGHT/2);
 	leftPlayer = new player(30, 90, 0, 0); 
-	rightPlayer = new player(30, 90, window.innerWidth-40, 0);
+	//rightPlayer = new player(30, 90, window.innerWidth-40, 0);
 	gameArea.initialize();
 }
 
 var gameArea = {
 	canvas : document.createElement("canvas"),
 	initialize : function(){
-		this.canvas.width = window.innerWidth;
+		this.canvas.width = window.WIDTH;
 		this.canvas.height = window.innerHeight-100;
 		this.context = this.canvas.getContext("2d");
 		document.body.insertBefore(this.canvas, document.body.childNodes[0]);
@@ -59,15 +59,30 @@ function ball(x, y){
 	}
 	
 	this.update = function(){
-		if (this.x + dx > WIDTH || this.x + dx < 0)
+		if (this.x + dx > WIDTH - 20 || this.hit() )
 		dx = -dx;
-		if (this.y + dy > HEIGHT || this.y + dy < 0)
+		if (this.y + dy > HEIGHT -120 || this.y + dy < 20)
 		dy = -dy;
 
 		this.x += dx;
 		this.y += dy;
 		
+		var message = "x = " + this.x ;
+		document.getElementById("x").innerHTML = message;
 		this.draw(this.x, this.y);
+	}
+	
+	this.hit = function(){
+		if(this.x + dx < 51){
+			if (this.y > leftPlayer.y ){
+				if( this.y < leftPlayer.y + 20 ){dy -= 3; dx -= 0.1; return true;}
+				if( this.y < leftPlayer.y + 45 ){dy += 1; dx -= 0.1; return true;}
+				if( this.y < leftPlayer.y + 70 ){dy -= 1; dx -= 0.1; return true;}
+				if( this.y < leftPlayer.y + 45 ){dy += 3; dx -= 0.1; return true;}
+			}
+			return false;
+		}
+		return false;
 	}
 
 }
@@ -75,7 +90,7 @@ function ball(x, y){
 function updateGameArea(){
 	gameArea.clear();
 	leftPlayer.update();
-    rightPlayer.update();
+    //rightPlayer.update();
 	gameBall.update();
 }
 
