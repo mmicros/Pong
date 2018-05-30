@@ -1,6 +1,6 @@
 var WIDTH = 1000;
 var HEIGHT = window.innerHeight;
-var dx = -2; var dy = 1;
+var dx = -5; var dy = 1;
 
 function startGame(){
 	gameBall = new ball(WIDTH/2, HEIGHT/2);
@@ -75,10 +75,10 @@ function ball(x, y){
 	this.hit = function(){
 		if(this.x + dx < 51){
 			if (this.y > leftPlayer.y ){
-				if( this.y < leftPlayer.y + 20 ){dy -= 3; dx -= 0.1; return true;}
+				if( this.y < leftPlayer.y + 20 ){dy += 3; dx -= 0.1; return true;}
 				if( this.y < leftPlayer.y + 45 ){dy += 1; dx -= 0.1; return true;}
 				if( this.y < leftPlayer.y + 70 ){dy -= 1; dx -= 0.1; return true;}
-				if( this.y < leftPlayer.y + 45 ){dy += 3; dx -= 0.1; return true;}
+				if( this.y < leftPlayer.y + 90 ){dy -= 3; dx -= 0.1; return true;}
 			}
 			return false;
 		}
