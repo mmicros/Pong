@@ -1,14 +1,9 @@
+var socket = io();
 
-var WIDTH = 1000;
+var WIDTH = window.innerWidth - 200;
 var HEIGHT = window.innerHeight;
 var dx = -5; var dy = 1;
 
-function startGame(){
-	gameBall = new ball(WIDTH/2, HEIGHT/2);
-	leftPlayer = new player(30, 90, 0, 0); 
-	//rightPlayer = new player(30, 90, window.innerWidth-40, 0);
-	gameArea.initialize();
-}
 
 var gameArea = {
 	canvas : document.createElement("canvas"),
@@ -17,20 +12,23 @@ var gameArea = {
 		this.canvas.height = window.innerHeight-100;
 		this.context = this.canvas.getContext("2d");
 		document.body.insertBefore(this.canvas, document.body.childNodes[0]);
-		this.interval = setInterval(updateGameArea,20);
+		//this.interval = setInterval(updateGameArea,20);
 	},
 	clear: function(){
 		this.context.clearRect(0,0, this.canvas.width, this.canvas.height);
 	}
 }
 
-function getMouseY(event){
-	leftPlayer.y = event.clientY-45;
+function startGame(){
+	gameArea.initialize();
+	gameBall = new ball(WIDTH/2, HEIGHT/2);
 }
 
-function player(w, h, x, y){
-	this.width = w;
-	this.height = h;
+
+
+function player( x, y){
+	this.width = 30;
+	this.height = 90;
 	this.x = x;
 	this.y = y;
 	
@@ -75,11 +73,11 @@ function ball(x, y){
 	
 	this.hit = function(){
 		if(this.x + dx < 51){
-			if (this.y > leftPlayer.y ){
-				if( this.y < leftPlayer.y + 20 ){dy += 3; dx -= 0.1; return true;}
-				if( this.y < leftPlayer.y + 45 ){dy += 1; dx -= 0.1; return true;}
-				if( this.y < leftPlayer.y + 70 ){dy -= 1; dx -= 0.1; return true;}
-				if( this.y < leftPlayer.y + 90 ){dy -= 3; dx -= 0.1; return true;}
+			if (this.y > newPlayer.y ){
+				if( this.y < newPlayer.y + 20 ){dy += 3; dx -= 0.1; return true;}
+				if( this.y < newPlayer.y + 45 ){dy += 1; dx -= 0.1; return true;}
+				if( this.y < newPlayer.y + 70 ){dy -= 1; dx -= 0.1; return true;}
+				if( this.y < newPlayer.y + 90 ){dy -= 3; dx -= 0.1; return true;}
 			}
 			return false;
 		}
@@ -88,64 +86,29 @@ function ball(x, y){
 
 }
 
-function updateGameArea(){
-	gameArea.clear();
-	leftPlayer.update();
-    //rightPlayer.update();
-	gameBall.update();
-}
-
-var socket = io();
-
-/*
-var movement = {
-  up: false,
-  down: false,
-  left: false,
-  right: false
-}
-document.addEventListener('keydown', function(event) {
-  switch (event.keyCode) {
-    case 65: // A
-      movement.left = true;
-      break;
-    case 87: // W
-      movement.up = true;
-      break;
-    case 68: // D
-      movement.right = true;
-      break;
-    case 83: // S
-      movement.down = true;
-      break;
-  }
+//capture mouse movement and send position to server
+var movement;
+document.addEventListener('mousemove', function(event){
+	movement = event.clientY-45;
 });
-document.addEventListener('keyup', function(event) {
-  switch (event.keyCode) {
-    case 65: // A
-      movement.left = false;
-      break;
-    case 87: // W
-      movement.up = false;
-      break;
-    case 68: // D
-      movement.right = false;
-      break;
-    case 83: // S
-      movement.down = false;
-      break;
-  }
-});]
+
+
+socket.emit('new player');
 
 setInterval(function() {
   socket.emit('movement', movement);
 }, 1000 / 60);
 
-*/
-
-socket.emit('new player');
-
 socket.on('state', function(players) {
-  console.log(players);
-  updateGameArea();
+  //console.log(players);
+  	gameArea.clear();
+	var newPlayer = new player(0, 0);
+	for (var id in players){
+		var p = players[id];
+		newPlayer.x = p.x;
+		newPlayer.y = p.y;
+		
+		newPlayer.update()
+	}
+	gameBall.update();
 });	 

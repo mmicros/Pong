@@ -1,11 +1,12 @@
 <!DOCTYPE html>
-<html>
-  <script type="text/javascript" src="static/canvas.js"> </script> 
+<html>  
 <head>
+  <script src = "/socket.io/socket.io.js"></script>
+  <script type="text/javascript" src="static/canvas.js"> </script>
   <link rel="stylesheet" href="style.css">
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 </head>
-<body onload="startGame()" onmousemove="getMouseY(event)">
+<body onload="startGame()" >
   <p id="x">  </p>
 </body>
 </html>

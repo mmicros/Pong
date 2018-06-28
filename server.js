@@ -20,14 +20,17 @@ server.listen(5000, function() {
   console.log('Starting server on port 5000');
 });
 
-var players = {};
+var players = {}; var i = 0;
 io.on('connection', function(socket) {
 	
   socket.on('new player', function() {
-    players[socket.id] = {
-      x: 300,
-      y: 300
-    };
+    if(i == 0){
+	  players[socket.id] = { x=0; y=0; i++; };	  
+	}
+	else if (i == 1){
+	  players[socket.id] = { x=window.innerWidth - 230; y=0; i++; };
+	}
+
   });
   
   socket.on('disconnect', function() {
@@ -37,19 +40,7 @@ io.on('connection', function(socket) {
   
   socket.on('movement', function(data) {
     var player = players[socket.id] || {};
-    if (data.left) {
-      player.x -= 5;
-    }
-    if (data.up) {
-      player.y -= 5;
-    }
-    if (data.right) {
-      player.x += 5;
-    }
-    if (data.down) {
-      player.y += 5;
-    }
-	
+	player.y = data;
   });
 });
 
