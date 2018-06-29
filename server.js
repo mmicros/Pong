@@ -1,3 +1,6 @@
+// game variables
+var dx = -5; var dy = 1;
+
 // Dependencies.
 var express = require('express');
 var http = require('http');
@@ -20,22 +23,29 @@ server.listen(5000, function() {
   console.log('Starting server on port 5000');
 });
 
-var players = {}; var i = 0;
+var state = {};
+state['ball'] = {x:500,y:500};
+state['players'] = {};
+var players = {}; 
 io.on('connection', function(socket) {
-	
-  socket.on('new player', function() {
-    if(i == 0){
-	  players[socket.id] = { x=0; y=0; i++; };	  
+  	
+  socket.on('new player', function() { 
+	console.log("player entered: " );
+    if(Object.keys(players).length == 0){
+	  console.log("player 1" );
+	  players[socket.id] = { x:0, y:0 };	
 	}
-	else if (i == 1){
-	  players[socket.id] = { x=window.innerWidth - 230; y=0; i++; };
+	else if (Object.keys(players).length == 1){
+	  console.log("player 2" );
+	  players[socket.id] = { x: 770, y:0  };
 	}
-
+	 
   });
   
   socket.on('disconnect', function() {
 	var id = socket.id;
     delete players[id];
+	console.log("player left" );
   });
   
   socket.on('movement', function(data) {
@@ -44,6 +54,24 @@ io.on('connection', function(socket) {
   });
 });
 
+function updateBall(){
+  x = state.ball.x;
+  y = state.ball.y;
+  if (x + dx > 1000 || x + dx < 0)
+    {dx = -dx; x -= dx;}
+  if (y + dy > 1000 || y + dy < 0)
+    {dy = -dy; y -= dy;}
+
+  x += dx;
+  y += dy;
+
+  state.ball.x = x;
+  state.ball.y = y;
+}
+
 setInterval(function() {
-  io.sockets.emit('state', players);
+  updateBall();	
+  state['players']= players; 
+  io.sockets.emit('state', state);
 }, 1000 / 60);
+
