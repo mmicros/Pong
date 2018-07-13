@@ -1,7 +1,7 @@
 # Pong
 Simple pong game to learn more Javascript.
 
-Some helpful info to get acquainted with the canvas element:
+Some helpful info to get acquainted with the canvas element as well as multiplayer user handling:
 
 * [Overview of canvases](https://www.w3schools.com/graphics/canvas_intro.asp)
 
