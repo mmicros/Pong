@@ -6,7 +6,6 @@ var express = require('express');
 var http = require('http');
 var path = require('path');
 var socketIO = require('socket.io');
-
 var app = express();
 var server = http.Server(app);
 var io = socketIO(server);
@@ -23,22 +22,24 @@ server.listen(5000, function() {
   console.log('Starting server on port 5000');
 });
 
+// *** GAME LOGIC ***
 var state = {};
 state['ball'] = {x:500,y:500};
 state['players'] = {};
 var players = {}; 
-io.on('connection', function(socket) {
-  	
-  socket.on('new player', function() { 
-	console.log("player entered: " );
-    if(Object.keys(players).length == 0){
-	  console.log("player 1" );
-	  players[socket.id] = { x:0, y:0 };	
-	}
-	else if (Object.keys(players).length == 1){
-	  console.log("player 2" );
-	  players[socket.id] = { x: 770, y:0  };
-	}
+
+
+io.on('connection', function(socket) 
+{	
+  socket.on('new player', function() 
+  { 
+    console.log("player entered: " );
+  
+    if(Object.keys(players).length == 0)
+      players[socket.id] = { x:0, y:0, score:0 };	
+
+    else if (Object.keys(players).length == 1)
+      players[socket.id] = { x: 770, y:0, score:0  };
 	 
   });
   
@@ -53,6 +54,8 @@ io.on('connection', function(socket) {
 	player.y = data;
   });
 });
+
+
 
 function updateBall(){
   x = state.ball.x;
@@ -69,8 +72,11 @@ function updateBall(){
   state.ball.y = y;
 }
 
+// send out 60 times/sec the state to the 2 players
 setInterval(function() {
-  updateBall();	
+  if(Object.keys(players).length == 2){
+    updateBall();	
+  }
   state['players']= players; 
   io.sockets.emit('state', state);
 }, 1000 / 60);
