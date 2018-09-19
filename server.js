@@ -59,14 +59,14 @@ io.on('connection', function(socket)
 });
 
 function leftHit(y){
-  if(players[id1].y<y && y<players[id1].y+90)
+  if(players[id1].y<y && y<players[id1].y+100)
     return true;
   else
     return false;
 }
 
 function rightHit(y){
-  if(players[id2].y<y && y<players[id2].y+90)
+  if(players[id2].y<y && y<players[id2].y+100)
     return true;
   else
     return false;
@@ -75,7 +75,7 @@ function rightHit(y){
 function updateBall(){
   x = state.ball.x;
   y = state.ball.y;
-  if (x + dx < 50){
+  if (x + dx < 40){
     if(leftHit(y)){
       dx = -dx; 
       x -= dx;
@@ -85,7 +85,7 @@ function updateBall(){
       players[id2].score++;
     }
   }
-  if (x + dx > 1000){
+  if (x + dx > 960){
     if(rightHit(y)){
       dx = -dx; 
       x -= dx;

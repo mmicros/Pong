@@ -25,7 +25,7 @@ function startGame(){
 
 function player( x, y){
 	this.width = 30;
-	this.height = 90;
+	this.height = Math.round(HEIGHT/10);
 	this.x = x;
 	this.y = y;
 	
@@ -67,7 +67,7 @@ function drawScore(score){
 //capture mouse movement and send position to server
 var movement;
 document.addEventListener('mousemove', function(event){
-	movement = (event.clientY)/HEIGHT*1000;
+	movement = Math.round((event.clientY)/HEIGHT*1000)-10;
 });
 
 
