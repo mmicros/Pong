@@ -24,7 +24,7 @@ server.listen(5000, function() {
 
 // *** GAME LOGIC ***
 var state = {};
-state['ball'] = {x:500,y:500};
+state['ball'] = {x:500,y:500, paused:0};
 state['players'] = {};
 var players = {}; 
 var id1,id2;
@@ -44,6 +44,7 @@ io.on('connection', function(socket)
     else if (Object.keys(players).length == 1){
       players[socket.id] = { x: 770, y:0, score:0  };
       id2 = socket.id;
+      state.ball.paused=1; pause();
     } 
   });
   
@@ -57,6 +58,12 @@ io.on('connection', function(socket)
     players[socket.id].y = data;
   });
 });
+
+function pause(){
+  setTimeout(function(){
+    state.ball.paused = 0;
+  },1500)
+}
 
 function leftHit(y){
   if(players[id1].y<y && y<players[id1].y+100)
@@ -83,6 +90,7 @@ function updateBall(){
     else{
       x=500; y=500;
       players[id2].score++;
+      state.ball.paused=1; pause();
     }
   }
   if (x + dx > 960){
@@ -93,6 +101,7 @@ function updateBall(){
     else{
       x=500; y=500;
       players[id1].score++;
+      state.ball.paused=1; pause();
     }
   }
   if (y + dy > 1000 || y + dy < 0)
@@ -108,7 +117,8 @@ function updateBall(){
 // send out 60 times/sec the state to the 2 players
 setInterval(function() {
   if(Object.keys(players).length == 2){
-    updateBall();	
+    if(state.ball.paused == 0)
+      updateBall();	
   }
   state['players']= players; 
   io.sockets.emit('state', state);

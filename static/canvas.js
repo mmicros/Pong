@@ -57,11 +57,11 @@ function ball(x, y){
  
 function drawScore(score){
 	ctx = gameArea.context;
-	ctx.font = "40px Helvetica";
-	ctx.fillStyle = "red";
-	ctx.fillText(score[0], WIDTH/4, 40);
+	ctx.font = "500px Helvetica";
+	ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+	ctx.fillText(score[0], WIDTH/5, 3*HEIGHT/4);
 	if(score.length > 1)
-		ctx.fillText(score[1], WIDTH-WIDTH/4, 30);
+		ctx.fillText(score[1], WIDTH-2*WIDTH/5, 3*HEIGHT/4);
 }
 
 //capture mouse movement and send position to server
