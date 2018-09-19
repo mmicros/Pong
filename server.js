@@ -27,6 +27,7 @@ var state = {};
 state['ball'] = {x:500,y:500};
 state['players'] = {};
 var players = {}; 
+var id1,id2;
 
 
 io.on('connection', function(socket) 
@@ -35,12 +36,15 @@ io.on('connection', function(socket)
   { 
     console.log("player entered: " );
   
-    if(Object.keys(players).length == 0)
+    if(Object.keys(players).length == 0){
       players[socket.id] = { x:0, y:0, score:0 };	
+      id1 = socket.id;
+    }
 
-    else if (Object.keys(players).length == 1)
+    else if (Object.keys(players).length == 1){
       players[socket.id] = { x: 770, y:0, score:0  };
-	 
+      id2 = socket.id;
+    } 
   });
   
   socket.on('disconnect', function() {
@@ -50,18 +54,47 @@ io.on('connection', function(socket)
   });
   
   socket.on('movement', function(data) {
-    var player = players[socket.id] || {};
-	player.y = data;
+    players[socket.id].y = data;
   });
 });
 
+function leftHit(y){
+  if(players[id1].y<y && y<players[id1].y+90)
+    return true;
+  else
+    return false;
+}
 
+function rightHit(y){
+  if(players[id2].y<y && y<players[id2].y+90)
+    return true;
+  else
+    return false;
+}
 
 function updateBall(){
   x = state.ball.x;
   y = state.ball.y;
-  if (x + dx > 1000 || x + dx < 0)
-    {dx = -dx; x -= dx;}
+  if (x + dx < 50){
+    if(leftHit(y)){
+      dx = -dx; 
+      x -= dx;
+    }
+    else{
+      x=500; y=500;
+      players[id2].score++;
+    }
+  }
+  if (x + dx > 1000){
+    if(rightHit(y)){
+      dx = -dx; 
+      x -= dx;
+    }
+    else{
+      x=500; y=500;
+      players[id1].score++;
+    }
+  }
   if (y + dy > 1000 || y + dy < 0)
     {dy = -dy; y -= dy;}
 

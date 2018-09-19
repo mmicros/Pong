@@ -3,7 +3,6 @@ var socket = io();
 var WIDTH = window.innerWidth -20;
 var HEIGHT = window.innerHeight -20;
 var dx = -5; var dy = 1;
-var countdown = 0;
 
 // the canvas for the game
 var gameArea = {
@@ -68,7 +67,7 @@ function drawScore(score){
 //capture mouse movement and send position to server
 var movement;
 document.addEventListener('mousemove', function(event){
-	movement = event.clientY-45;
+	movement = (event.clientY)/HEIGHT*1000;
 });
 
 
@@ -97,7 +96,7 @@ socket.on('state', function(state) {
 	var i=0;
 	for (var id in state.players){
 		var temp = state.players[id];
-		users.push(new player(i*(WIDTH-30), temp.y)) ;
+		users.push(new player(i*(WIDTH-30), HEIGHT*temp.y/1000)) ;
 		users[i].update();
 		score.push(temp.score)
 		i++;
