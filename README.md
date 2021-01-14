@@ -1,5 +1,5 @@
 # Pong
-Simple pong game to learn more Javascript.
+Simple pong game to learn more Javascript/NodeJS.
 
 
 ## Helpful Links
