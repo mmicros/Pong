@@ -18,7 +18,7 @@ app.get('/', function(request, response) {
   response.sendFile(path.join(__dirname, 'pong.html'));
 });
 
-server.listen(5000, function() {
+server.listen(process.env.PORT || 5000, function() {
   console.log('Starting server on port 5000');
 });
 
