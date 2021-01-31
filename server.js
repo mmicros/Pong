@@ -1,5 +1,9 @@
 // game variables
-var dx = -5; var dy = 1;
+var dx = -40; var dy = 20; // the step in the x and y directions
+var div = 20000;/* I will arbitrarily divide the height and width by this
+                  number. This will help with measuring the step by which
+                  to move the ball */
+    
 
 // Dependencies.
 var express = require('express');
@@ -16,46 +20,63 @@ app.use('/static', express.static(__dirname + '/static'));
 // Routing
 app.get('/', function(request, response) {
   response.sendFile(path.join(__dirname, 'pong.html'));
-});
+})
 
 server.listen(process.env.PORT || 5000, function() {
   console.log('Starting server on port 5000');
 });
 
 // *** GAME LOGIC ***
+
 var state = {};
-state['ball'] = {x:500,y:500, paused:0};
+state['ball'] = {x:div/2, y:div/2, paused:0}; // div/2 puts the ball in the middle of the screen
+state['blockHeight'] = 0;
 state['players'] = {};
+state['mode'] = 0; // 0: menu, 1:single player, 2:multiplayer
+state['dims'] = {}; // width and height to be used for both player's canvases
 var players = {}; 
 var id1,id2;
 
 
 io.on('connection', function(socket) 
 {	
-  socket.on('new player', function() 
+  socket.on('new player', function(dims) 
   { 
     console.log("player entered: " );
   
     if(Object.keys(players).length == 0){
-      players[socket.id] = { x:0, y:0, score:0 };	
+      players[socket.id] = { x:0, y:0, score:0};	
       id1 = socket.id;
+      state['players']= players; 
+      state['mode']=0;
+      state['dims']=dims;
+      io.sockets.emit('state', state);
     }
 
     else if (Object.keys(players).length == 1){
-      players[socket.id] = { x: 770, y:0, score:0  };
+      players[socket.id] = { x: dims.x, y:0, score:0};
       id2 = socket.id;
+      state['mode']=2;
+      state['dims']=dims;
+      io.sockets.emit('state', state);
       state.ball.paused=1; pause();
     } 
+
+    // else spectators? 
   });
   
   socket.on('disconnect', function() {
-	var id = socket.id;
+	  var id = socket.id;
     delete players[id];
-	console.log("player left" );
+    if(state.mode==2)
+      state.mode=1;
+	  console.log("player left" );
   });
   
-  socket.on('movement', function(data) {
-    players[socket.id].y = data;
+  socket.on('state', function(data) {
+    state.mode = data.mode;
+    state.blockHeight = data.height;
+    players[socket.id].y = data.y;
   });
 });
 
@@ -66,45 +87,57 @@ function pause(){
 }
 
 function leftHit(y){
-  if(players[id1].y<y && y<players[id1].y+100)
+
+  if(players[id1].y<y && y<players[id1].y+(div/7))
     return true;
   else
     return false;
 }
 
 function rightHit(y){
-  if(players[id2].y<y && y<players[id2].y+100)
+  if(state.mode==1){
+    return true;
+  }
+  if(players[id2].y<y && y<players[id2].y+div/7)
     return true;
   else
     return false;
 }
 
 function updateBall(){
+  var ballRadius = 45*Math.round(state.dims.y/div); // ball radius=20 + border width = 5
+  var blockWidth = div/40;
   x = state.ball.x;
   y = state.ball.y;
-  if (x + dx < 40){
+  if (x + dx < blockWidth+ballRadius){
     if(leftHit(y)){
       dx = -dx; 
       x -= dx;
     }
     else{
-      x=500; y=500;
-      players[id2].score++;
+      x=div/2; y=div/2;
+      if(state.mode==2){
+        players[id2].score++;
+      }
       state.ball.paused=1; pause();
     }
   }
-  if (x + dx > 960){
+
+  if (x + dx > (state.mode==2 ? div-blockWidth : div-ballRadius)){
     if(rightHit(y)){
       dx = -dx; 
       x -= dx;
     }
     else{
-      x=500; y=500;
-      players[id1].score++;
+      x=div/2; y=div/2;
+      if(state.mode==2){
+        players[id1].score++;
+      }
       state.ball.paused=1; pause();
     }
   }
-  if (y + dy > 1000 || y + dy < 0)
+
+  if (y + dy > div-ballRadius || y + dy < ballRadius)
     {dy = -dy; y -= dy;}
 
   x += dx;
@@ -116,11 +149,11 @@ function updateBall(){
 
 // send out 60 times/sec the state to the 2 players
 setInterval(function() {
-  if(Object.keys(players).length == 2){
+  if(state.mode!=0){
     if(state.ball.paused == 0)
       updateBall();	
+    state['players']= players; 
+    io.sockets.emit('state', state);
   }
-  state['players']= players; 
-  io.sockets.emit('state', state);
 }, 1000 / 60);
 
