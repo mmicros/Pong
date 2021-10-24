@@ -1,13 +1,13 @@
 var socket = io();
 
+var globals = {div: 20000,                        // virtual grid size
+			   ballRadius: 500,                   // virtual ball radius (will be translated in canvas.js)
+			   block: {width:400, height:2000}};  // virtual block size (will be translated in canvas.js)
+
 var gameCanvas = document.createElement("canvas");
 var context = gameCanvas.getContext("2d");
-var WIDTH = window.innerWidth -50;
-var HEIGHT = window.innerHeight -50;
-var wCanvas = 0;
-var hCanvas = 0;
-var block = 0;
-var div = 20000;
+var WIDTH = window.innerWidth;
+var HEIGHT = window.innerHeight-10;
 
 // the canvas for the game
 var gameArea = {
@@ -15,24 +15,24 @@ var gameArea = {
 	initialize : function(){
 		this.canvas.width = WIDTH;
 		this.canvas.height = HEIGHT;
-		this.canvas.style = "border:5px solid black;";
 		this.context = context;
 		document.body.insertBefore(this.canvas, document.body.childNodes[0]);
 	},
 	clear: function(){
-		context.clearRect(0,0, this.canvas.width, this.canvas.height);
+		context.clearRect(0,0, WIDTH, HEIGHT);
 	},
 	singlePlayer: function(){
 		ctx = context;
 		ctx.textAlign = "center";
 		ctx.font = "50px Special Elite";
-		ctx.fillText("MIKE'S EXISTENTIAL PONG", this.canvas.width/2, this.canvas.height/5);
+		ctx.fillText("MIKE'S EXISTENTIAL PONG", WIDTH/2, HEIGHT/5);
 		
 		ctx.font = "20px Special Elite";
-		ctx.fillText("It seems you are the only player. You didn't ask for it,", this.canvas.width/2, this.canvas.height*0.4);
-		ctx.fillText("but you must play in Sisyphus mode", this.canvas.width/2, this.canvas.height*0.5);
+		ctx.fillText("It seems you are the only player. You didn't ask for it,", WIDTH/2, HEIGHT*0.4);
+		ctx.fillText("but you must play in Sisyphus mode", WIDTH/2, HEIGHT*0.5);
 		
 		var timer = setTimeout(function(){
+			console.log("canvas -- setting mode to 1");
 			playerState.mode=1;
 		}, 5000)
 	},
@@ -50,46 +50,57 @@ var gameArea = {
 }
 
 function startGame(){
+	console.log("canvas.js: Entered startGame()");
 	gameArea.initialize();
 	var rect=gameCanvas.getBoundingClientRect();
-	wCanvas = rect.right - rect.left;
-	hCanvas = rect.bottom - rect.top;
+	console.log("screen = %i,%i",WIDTH, HEIGHT);
+
 }
 
-function player( x, y){
-	this.width = WIDTH/40;
-	this.height = Math.round(HEIGHT/7);
-	this.x = x;
-	this.y = y;
-	
+function player(x, y){
+	this.screenPos = {x: x, y: y}; // server coordinates
+	this.virtualPos = {x: this.screenPos.x*WIDTH/globals.div ,
+					   y: this.screenPos.y*HEIGHT/globals.div};
+	this.translatedBlockHeight = HEIGHT*globals.block.height/globals.div;
+	this.translatedBlockWidth = HEIGHT*globals.block.width/globals.div;
 	this.update = function(){
 		ctx = gameArea.context;
-		ctx.fillStyle = "black";
-		if(this.y < 10)
-			{this.y = 0;}
-		else if(this.y > gameArea.canvas.height-this.height) 
-			{this.y = gameArea.canvas.height - this.height;}
-		ctx.fillRect(this.x, this.y, this.width, this.height);
+		ctx.fillStyle = "red";
+		if(this.screenPos.y < 10)
+			{this.screenPos.y = 0;}
+		else if(this.screenPos.y > HEIGHT-this.translatedBlockHeight) 
+			{this.screenPos.y = HEIGHT - this.translatedBlockHeight;}
+		
+		ctx.fillRect(this.screenPos.x, this.screenPos.y, this.translatedBlockWidth, this.translatedBlockHeight);
 	}
-	block = this.height;
 }
 
 function ball(x, y){
-	this.x = x;
-	this.y = y;
+	this.virtualPos = {x: x, y: y}; // server coordinates
+	this.translatedPos = {x: x*WIDTH/globals.div , y: y*HEIGHT/globals.div};
+	this.radius = globals.ballRadius*HEIGHT/globals.div;
 	
 	this.draw = function(){
 		ctx = gameArea.context;
 		ctx.fillStyle = "black";
 		
+		if(this.virtualPos.y < 200)
+		{		  
+			console.log("ball is at virtual y = %i", this.virtualPos.y);
+			console.log("ball is at translated y = %i", this.translatedPos.y);
+		}
 		ctx.beginPath();
-		ctx.arc(this.x,this.y,20,0,2*Math.PI);
+		ctx.arc(this.translatedPos.x ,this.translatedPos.y , this.radius ,0 ,2*Math.PI);
 		ctx.stroke();
 		ctx.fill();
+
+		//console.log("canvas.js: ball is at (%i,%i)", this.translatedPos.x, this.translatedPos.y);
+
 	}
 }
  
 function drawScore(score){
+	//console.log("canvas.js: Entered drawScore()");
 	ctx = gameArea.context;
 	/* ctx.font = "500px Helvetica";
 	ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
@@ -103,14 +114,13 @@ function drawScore(score){
 var playerState = {};
 playerState.mode = 0;
 gameCanvas.addEventListener('mousemove', function(event){
+	//console.log("mouse : %i, %i", event.clientX, event.clientY);
 	var rect=gameCanvas.getBoundingClientRect();
-	playerState.height = block;
-	playerState.y = Math.round((event.clientY-rect.top)/(hCanvas)*div);
+	playerState.y = Math.round(event.clientY/(HEIGHT)*globals.div);
 });
 
-// send monitor info to server for each user
-var monitorSize = {x : wCanvas, y : hCanvas};
-socket.emit('new player', monitorSize);
+// notify server about new player entering
+socket.emit('new player');
 
 // send player info to server 60 times/sec
 setInterval(function() {
@@ -131,9 +141,7 @@ socket.on('state', function(state) {
 	}
 
 	// get ball position and draw
-	var x = (WIDTH)*(state.ball.x/div); // the game canvas is arbitrarily divided into 1000 horizontal 
-	var y = HEIGHT*state.ball.y/div;	 // and 1000 vertical segments. This helps deal with different 
-	var gameBall = new ball(x,y);		 // monitor dimensions between players.
+	var gameBall = new ball(state.ball.x,state.ball.y);
 	gameBall.draw();	
 	
 	// draw players
@@ -141,12 +149,12 @@ socket.on('state', function(state) {
 	var i=0;
 	for (var id in state.players){
 		var temp = state.players[id];
-		users.push(new player(i*(WIDTH-30), HEIGHT*temp.y/div)) ;
+		users.push(new player(i*(WIDTH-30), HEIGHT*temp.y/globals.div)) ;
 		users[i].update();
 		score.push(temp.score)
 		i++;
 	}
 
 	//draw score
-	drawScore(score);
+	//drawScore(score);
 });	 

@@ -1,10 +1,3 @@
-// game variables
-var dx = -40; var dy = 20; // the step in the x and y directions
-var div = 20000;/* I will arbitrarily divide the height and width by this
-                  number. This will help with measuring the step by which
-                  to move the ball */
-    
-
 // Dependencies.
 var express = require('express');
 var http = require('http');
@@ -14,7 +7,17 @@ var app = express();
 var server = http.Server(app);
 var io = socketIO(server);
 
+// game variables
+var globals = {div: 20000,                                     // virtual grid size
+               dx: 200, dy: 0,                                 // arbitrary step size for ball movement
+               ballRadius: 500,                                // virtual ball radius (will be translated in canvas.js)
+               block: {width:20, height:100}};    // virtual block size (will be translated in canvas.js)
+
+/* console.log("sanity check");
+console.log("div = %i \ndx = %i \ndy = %i \nballRadius = %i \nblock = %i", 
+            globals.div, globals.dx, globals.dy, globals.ballRadius, globals.block); */
 app.set('port', 5000);
+app.use('/public', express.static(__dirname + '/public'));
 app.use('/static', express.static(__dirname + '/static'));
 
 // Routing
@@ -29,8 +32,8 @@ server.listen(process.env.PORT || 5000, function() {
 // *** GAME LOGIC ***
 
 var state = {};
-state['ball'] = {x:div/2, y:div/2, paused:0}; // div/2 puts the ball in the middle of the screen
-state['blockHeight'] = 0;
+state['ball'] = {x:globals.div/2, y:globals.div/2, paused:0}; // div/2 puts the ball in the middle of the screen
+//state['blockHeight'] = 0; to delete
 state['players'] = {};
 state['mode'] = 0; // 0: menu, 1:single player, 2:multiplayer
 state['dims'] = {}; // width and height to be used for both player's canvases
@@ -40,7 +43,7 @@ var id1,id2;
 
 io.on('connection', function(socket) 
 {	
-  socket.on('new player', function(dims) 
+  socket.on('new player', function() 
   { 
     console.log("player entered: " );
   
@@ -49,7 +52,6 @@ io.on('connection', function(socket)
       id1 = socket.id;
       state['players']= players; 
       state['mode']=0;
-      state['dims']=dims;
       io.sockets.emit('state', state);
     }
 
@@ -57,7 +59,6 @@ io.on('connection', function(socket)
       players[socket.id] = { x: dims.x, y:0, score:0};
       id2 = socket.id;
       state['mode']=2;
-      state['dims']=dims;
       io.sockets.emit('state', state);
       state.ball.paused=1; pause();
     } 
@@ -75,7 +76,7 @@ io.on('connection', function(socket)
   
   socket.on('state', function(data) {
     state.mode = data.mode;
-    state.blockHeight = data.height;
+    //state.blockHeight = data.height;
     players[socket.id].y = data.y;
   });
 });
@@ -88,7 +89,7 @@ function pause(){
 
 function leftHit(y){
 
-  if(players[id1].y<y && y<players[id1].y+(div/7))
+  if( players[id1].y<y && y<(players[id1].y + globals.block.height) )
     return true;
   else
     return false;
@@ -98,24 +99,27 @@ function rightHit(y){
   if(state.mode==1){
     return true;
   }
-  if(players[id2].y<y && y<players[id2].y+div/7)
+  if(players[id2].y<y && y<(players[id2].y + globals.block.height) )
     return true;
   else
     return false;
 }
 
 function updateBall(){
-  var ballRadius = 45*Math.round(state.dims.y/div); // ball radius=20 + border width = 5
-  var blockWidth = div/40;
   x = state.ball.x;
   y = state.ball.y;
-  if (x + dx < blockWidth+ballRadius){
+  //console.log("ball = " + x + ", " + y);
+
+  if (x + globals.dx < globals.block.width+globals.ballRadius){
+    
     if(leftHit(y)){
-      dx = -dx; 
-      x -= dx;
+      //console.log("block width = " + state.dims.x/40);
+
+      globals.dx = -globals.dx; 
+      x -= globals.dx;
     }
     else{
-      x=div/2; y=div/2;
+      x=globals.div/2; y=globals.div/2;
       if(state.mode==2){
         players[id2].score++;
       }
@@ -123,13 +127,13 @@ function updateBall(){
     }
   }
 
-  if (x + dx > (state.mode==2 ? div-blockWidth : div-ballRadius)){
+  if (x + globals.dx > (state.mode==2 ? globals.div-globals.block.width : globals.div-globals.ballRadius)){
     if(rightHit(y)){
-      dx = -dx; 
-      x -= dx;
+      globals.dx = -globals.dx; 
+      x -= globals.dx;
     }
     else{
-      x=div/2; y=div/2;
+      x=globals.div/2; y=globals.div/2;
       if(state.mode==2){
         players[id1].score++;
       }
@@ -137,11 +141,34 @@ function updateBall(){
     }
   }
 
-  if (y + dy > div-ballRadius || y + dy < ballRadius)
-    {dy = -dy; y -= dy;}
+  //debug --- delete when done
+  /* if(y<1000 || y>19000)
+  {
+    console.log("ball is at %i", y);
+    console.log("new y = %i", y + globals.dy);
+  } */
 
-  x += dx;
-  y += dy;
+  // when ball hits bottom of canvas
+  if (y + globals.dy > globals.div-globals.ballRadius)
+  {
+    y = globals.div - globals.ballRadius;
+    globals.dy = -globals.dy; 
+  }
+
+  // when ball hits top of canvas
+  else if(y + globals.dy < globals.ballRadius)
+  {
+    y = globals.ballRadius;
+    globals.dy = -globals.dy;     
+  }
+  
+  // non edge cases
+  else
+  {
+    x += globals.dx;
+    y += globals.dy;  
+  }
+
 
   state.ball.x = x;
   state.ball.y = y;
@@ -149,11 +176,10 @@ function updateBall(){
 
 // send out 60 times/sec the state to the 2 players
 setInterval(function() {
-  if(state.mode!=0){
+  if(state.mode){
     if(state.ball.paused == 0)
       updateBall();	
     state['players']= players; 
     io.sockets.emit('state', state);
   }
 }, 1000 / 60);
-
