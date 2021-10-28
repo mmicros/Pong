@@ -22,10 +22,10 @@ server.listen(process.env.PORT || 5000, function() {
 
 // *** GAME LOGIC ***
 // game variables
-var globals = {div: 20000,             // virtual grid size
-  dx: 80, dy: 0,                       // arbitrary step size for ball movement
-  ballRadius: 500,                     // virtual ball radius (will be translated in canvas.js)
-  block: {width:400, height:2000}};    // virtual block size (will be translated in canvas.js)
+var globals = { div: 20000,                          // virtual grid size
+                dx: -80, dy: 0,                       // arbitrary step size for ball movement
+                ballRadius: 500,                     // virtual ball radius (will be translated in canvas.js)
+                block: {width:400, height:2000}};    // virtual block size (will be translated in canvas.js)
 var state = {};
 state['ball'] = {x:globals.div/2, 
                  y:globals.div/2,
@@ -85,80 +85,86 @@ function pause(){
   },1500)
 }
 
-function leftHit(y){
-  if( players[id1].y<y && y<(players[id1].y + globals.block.height) )
-    return true;
-  else
-    return false;
+function leftHit(_ball){ //TO DO: change colors to background on bounce
+  if( players[id1].y - globals.block.height/3<_ball.y && _ball.y<(players[id1].y + 4/3*(globals.block.height) )){
+    _ball.dx = -_ball.dx; 
+    _ball.x = globals.ballRadius;
+
+    relativeY = _ball.y - players[id1].y - globals.block.height/2;
+    _ball.dy = _ball.dy + relativeY/10;
+  }
+  else{
+    _ball.x=globals.div/2; 
+    _ball.y=globals.div/2;
+    if(state.mode==2)
+      players[id2].score++;
+    state.ball.paused=1; pause();
+  }
 }
 
-function rightHit(y){
+function rightHit(_ball){
   if(state.mode==1){
-    return true;
+    _ball.dx = -_ball.dx; 
+    _ball.x = globals.div -globals.ballRadius;
+    return 0;
   }
-  if(players[id2].y<y && y<(players[id2].y + globals.block.height) )
-    return true;
-  else
-    return false;
+
+  if(players[id2].y<_ball.y && _ball.y<(players[id2].y + globals.block.height) )
+  {
+    _ball.dx = -_ball.dx; 
+    _ball.x = globals.ballRadius;
+
+    relativeY = _ball.y - players[id1].y - globals.block.height/2;
+    _ball.dy = _ball.dy + relativeY/10;
+  }
+  else{
+    ball.x=globals.div/2; 
+    ball.y=globals.div/2;
+    if(state.mode==2){
+      players[id1].score++;
+    }
+    state.ball.paused=1; pause();
+  }
 }
 
 function updateBall(){
-  x = state.ball.x;
-  y = state.ball.y;
-  nextX = x + globals.dx; // new positions after step is applied
-  nextY = y + globals.dy; //
+  ball = {x: state.ball.x,
+          y: state.ball.y,
+          dx: globals.dx,
+          dy: globals.dy,
+          nextX: state.ball.x + globals.dx, // new positions after step is applied
+          nextY: state.ball.y + globals.dy};//
   
   //check left boundary
-  if (nextX < globals.block.width+globals.ballRadius/2){
-    if(leftHit(y)){
-      globals.dx = -globals.dx; 
-      x = globals.ballRadius;
-    }
-    else{
-      x=globals.div/2; 
-      y=globals.div/2;
-      if(state.mode==2)
-        players[id2].score++;
-      state.ball.paused=1; pause();
-    }
-  }
+  if (ball.nextX < globals.block.width+globals.ballRadius/2)
+    leftHit(ball);
 
   //check right boundary
-  if (nextX > (state.mode==2 ? globals.div-globals.block.width : globals.div-globals.ballRadius/2)){
-    if(rightHit(y)){
-      globals.dx = -globals.dx; 
-      x = globals.div-globals.block.width;
-    }
-    else{
-      x=globals.div/2; 
-      y=globals.div/2;
-      if(state.mode==2){
-        players[id1].score++;
-      }
-      state.ball.paused=1; pause();
-    }
-  }
+  if (ball.nextX > (state.mode==2 ? globals.div-globals.block.width : globals.div-globals.ballRadius/2))
+    rightHit(ball);
 
   //check bottom boundary
-  if (nextY > globals.div-globals.ballRadius){
+  if (ball.nextY > globals.div-globals.ballRadius){
     y = globals.div - globals.ballRadius;
-    globals.dy = -globals.dy; 
+    ball.dy = -ball.dy; 
   }
 
   //check top boundary
-  else if(nextY < globals.ballRadius){
+  else if(ball.nextY < globals.ballRadius){
     y = globals.ballRadius;
-    globals.dy = -globals.dy;     
+    ball.dy = -ball.dy;     
   }
   
   // non edge cases
   else{
-    x += globals.dx;
-    y += globals.dy;  
+    ball.x += ball.dx;
+    ball.y += ball.dy;  
   }
 
-  state.ball.x = x;
-  state.ball.y = y;
+  state.ball.x = ball.x;
+  state.ball.y = ball.y;
+  globals.dx = ball.dx;
+  globals.dy = ball.dy;
 }
 
 // send out 60 times/sec the state to the 2 players
@@ -169,4 +175,4 @@ setInterval(function() {
     state['players']= players; 
     io.sockets.emit('state', state);
   }
-}, 1000 / 10);
+}, 1000 / 60);
