@@ -25,15 +25,15 @@ server.listen(process.env.PORT || 5000, function() {
 var globals = { div: 20000,                          // virtual grid size
                 dx: -80, dy: 0,                       // arbitrary step size for ball movement
                 ballRadius: 500,                     // virtual ball radius (will be translated in canvas.js)
-                block: {width:400, height:2000}};    // virtual block size (will be translated in canvas.js)
-var state = {};
-state['ball'] = {x:globals.div/2, 
-                 y:globals.div/2,
-                 dx:globals.dx,
-                 dy:globals.dy,
-                 paused:0};
-state['players'] = {};
-state['mode'] = 0;                     // 0: menu, 1:single player, 2:multiplayer
+                block: {width:400, height:3000}};    // virtual block size (will be translated in canvas.js)
+
+var state = {'ball' : {x:globals.div/2, 
+                       y:globals.div/2,
+                       dx:globals.dx,
+                       dy:globals.dy,
+                       paused:0},
+             'players':{},
+             'mode' :0 }; // 0: menu, 1:single player, 2:multiplayer                 
 var players = {}; 
 var id1,id2;
 
@@ -54,11 +54,12 @@ io.on('connection', function(socket)
 
     //second player to enter
     else if (Object.keys(players).length == 1){
-      players[socket.id] = { x: dims.x, y:0, score:0};
+      players[socket.id] = { y:0, score:0};
       id2 = socket.id;
-      state['mode']=2;
+      state['players']= players; 
+      state['mode']=0;
       io.sockets.emit('state', state);
-      state.ball.paused=1; pause();
+      //state.ball.paused=1; pause();
     } 
 
     // else spectators? 
@@ -86,16 +87,20 @@ function pause(){
 }
 
 function leftHit(_ball){ //TO DO: change colors to background on bounce
-  if( players[id1].y - globals.block.height/3<_ball.y && _ball.y<(players[id1].y + 4/3*(globals.block.height) )){
-    _ball.dx = -_ball.dx; 
+  hitLength = globals.block.height/2 + globals.ballRadius;
+  if( players[id1].y - hitLength <_ball.y && _ball.y<players[id1].y + hitLength ){
+    stepUp = _ball.dx>0 ? 20 : -20;
+    _ball.dx = -(_ball.dx+stepUp); 
     _ball.x = globals.ballRadius;
 
-    relativeY = _ball.y - players[id1].y - globals.block.height/2;
-    _ball.dy = _ball.dy + relativeY/10;
+    relativeY = _ball.y - players[id1].y ;
+    _ball.dy = _ball.dy + relativeY/15;
   }
   else{
     _ball.x=globals.div/2; 
     _ball.y=globals.div/2;
+    _ball.dy = 0;
+    _ball.dx = -100;
     if(state.mode==2)
       players[id2].score++;
     state.ball.paused=1; pause();
@@ -104,22 +109,26 @@ function leftHit(_ball){ //TO DO: change colors to background on bounce
 
 function rightHit(_ball){
   if(state.mode==1){
-    _ball.dx = -_ball.dx; 
+    stepUp = _ball.dx>0 ? 20 : -20;
+    _ball.dx = -(_ball.dx+stepUp); 
     _ball.x = globals.div -globals.ballRadius;
     return 0;
   }
 
-  if(players[id2].y<_ball.y && _ball.y<(players[id2].y + globals.block.height) )
-  {
-    _ball.dx = -_ball.dx; 
-    _ball.x = globals.ballRadius;
+  hitLength = globals.block.height/2 + globals.ballRadius;
+  if( players[id2].y - hitLength < _ball.y && _ball.y < players[id2].y + hitLength){
+    stepUp = _ball.dx>0 ? 20 : -20;
+    _ball.dx = -(_ball.dx+stepUp); 
+    _ball.x = globals.div-globals.ballRadius;
 
-    relativeY = _ball.y - players[id1].y - globals.block.height/2;
-    _ball.dy = _ball.dy + relativeY/10;
+    relativeY = _ball.y - players[id2].y;
+    _ball.dy = _ball.dy + relativeY/15;
   }
   else{
-    ball.x=globals.div/2; 
-    ball.y=globals.div/2;
+    _ball.x=globals.div/2; 
+    _ball.y=globals.div/2;
+    _ball.dy = 0;
+    _ball.dx = -100;
     if(state.mode==2){
       players[id1].score++;
     }
@@ -147,12 +156,14 @@ function updateBall(){
   if (ball.nextY > globals.div-globals.ballRadius){
     y = globals.div - globals.ballRadius;
     ball.dy = -ball.dy; 
+    ball.dx += 20;
   }
 
   //check top boundary
   else if(ball.nextY < globals.ballRadius){
     y = globals.ballRadius;
-    ball.dy = -ball.dy;     
+    ball.dy = -ball.dy;
+    ball.dx += 20;
   }
   
   // non edge cases
