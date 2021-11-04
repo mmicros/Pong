@@ -22,117 +22,180 @@ server.listen(process.env.PORT || 5000, function() {
 
 // *** GAME LOGIC ***
 // game variables
+var bounceCnt = 0;
 var globals = { div: 20000,                          // virtual grid size
-                dx: -80, dy: 0,                       // arbitrary step size for ball movement
-                ballRadius: 500,                     // virtual ball radius (will be translated in canvas.js)
+                dx: -80, dy: 0,                      // arbitrary step size for ball movement
+                ballRadius: 200,                     // virtual ball radius (will be translated in canvas.js)
                 block: {width:400, height:3000}};    // virtual block size (will be translated in canvas.js)
 
-var state = {'ball' : {x:globals.div/2, 
-                       y:globals.div/2,
-                       dx:globals.dx,
-                       dy:globals.dy,
-                       paused:0},
-             'players':{},
-             'mode' :0 }; // 0: menu, 1:single player, 2:multiplayer                 
-var players = {}; 
-var id1,id2;
+var colorSets = [
+  {fg:"white", bg:"black"},
+  {fg:"black", bg:"white"}
+  /* {fg:"white", bg:"black"},
+  {fg:"white", bg:"black"},
+  {fg:"white", bg:"black"}, */
+];
+
+var state = {ball :{x:globals.div/2, 
+                    y:globals.div/2,
+                    dx:globals.dx,
+                    dy:globals.dy,
+                    paused:0},
+             players:{},
+             left: 0,
+             right: 0,
+             colors: colorSets[0],
+             mode :0 }; // 0: menu, 1:single(left), 2:single (right), 3:multiplayer
 
 io.on('connection', function(socket) 
 {	
+
+  let socketId = socket.id;
   socket.on('new player', function() 
   { 
-    console.log("player entered: " );
+    console.log("player entered: ");
+    pauseGame();
     
     // first player to enter
-    if(Object.keys(players).length == 0){
-      players[socket.id] = { x:0, y:0, score:0};	
-      id1 = socket.id;
-      state['players']= players; 
-      state['mode']=0;
-      io.sockets.emit('state', state);
+    if(Object.keys(state.players).length == 0){
+      console.log("creating left player");
+      state.left = socketId;
+      state.players[socketId] = { y:0, score:0, playing:0, side:"left"};
+      state.mode = 0;	
     }
 
-    //second player to enter
-    else if (Object.keys(players).length == 1){
-      players[socket.id] = { y:0, score:0};
-      id2 = socket.id;
-      state['players']= players; 
-      state['mode']=0;
-      io.sockets.emit('state', state);
-      //state.ball.paused=1; pause();
-    } 
+    // second player to enter
+    else if(Object.keys(state.players).length == 1){
+      console.log("creating right player");
+      state.right = socketId;
+      state.players[socketId] = { y:0, score:0, playing:0, side:"right"};	
+    }
 
+    console.log({state});
+    for(i in state.players)
+      console.log(state.players[i]);
+    io.sockets.emit('state', state);
     // else spectators? 
   });
   
   socket.on('disconnect', function() {
-	  var id = socket.id;
-    delete players[id];
-    if(state.mode==2)
-      state.mode=1;
-	  console.log("player left" );
+    console.log("player left" );
+    delete state.players[socketId];
+    if(socketId == state.left)
+      state.left = 0;
+    else if (socketId == state.right)
+      state.right = 0;
+    pauseGame();
+    io.sockets.emit('state', state);
+
   });
   
   socket.on('state', function(data) {
-    state.mode = data.mode;
-    players[socket.id].y = data.y;
+    if(Object.keys(state.players).length){
+      state.players[socketId].y = data.y;
+      state.players[socketId].playing = data.playing;
+    }
+    
+/*     console.log("mode = "+state.mode);
+    console.log("num of players: "+Object.keys(state.players).length);
+ */
+    switch(Object.keys(state.players).length){
+      case 0:
+        state.mode = 0;
+        break;
+      case 1:
+        if(state.players[socketId].side == "left" && state.players[socketId].playing)
+          state.mode = 1;
+        else if(state.players[socketId].side == "right" && 
+                state.players[socketId].playing)
+          state.mode = 2;
+        else
+          state.mode = 0;
+        break;
+      case 2:
+        if(state.players[state.left].playing && state.players[state.right].playing)
+          state.mode = 3;
+        else
+          state.mode = 0;
+        break;
+    }
   });
 });
 
 // used after a player scores
-function pause(){
+function pauseBall(){
+  state.ball.paused=1;
   setTimeout(function(){
     state.ball.paused = 0;
   },1500)
 }
 
-function leftHit(_ball){ //TO DO: change colors to background on bounce
-  hitLength = globals.block.height/2 + globals.ballRadius;
-  if( players[id1].y - hitLength <_ball.y && _ball.y<players[id1].y + hitLength ){
+function pauseGame(){
+  state.mode = 0;
+  for(p in state.players)
+    state.players[p].playing = 0;
+}
+
+function leftHit(_ball){ 
+  if(state.mode==2){ // single player (right)
     stepUp = _ball.dx>0 ? 20 : -20;
     _ball.dx = -(_ball.dx+stepUp); 
     _ball.x = globals.ballRadius;
-
-    relativeY = _ball.y - players[id1].y ;
-    _ball.dy = _ball.dy + relativeY/15;
-  }
-  else{
-    _ball.x=globals.div/2; 
-    _ball.y=globals.div/2;
-    _ball.dy = 0;
-    _ball.dx = -100;
-    if(state.mode==2)
-      players[id2].score++;
-    state.ball.paused=1; pause();
-  }
-}
-
-function rightHit(_ball){
-  if(state.mode==1){
-    stepUp = _ball.dx>0 ? 20 : -20;
-    _ball.dx = -(_ball.dx+stepUp); 
-    _ball.x = globals.div -globals.ballRadius;
+    changeColor();
     return 0;
   }
 
   hitLength = globals.block.height/2 + globals.ballRadius;
-  if( players[id2].y - hitLength < _ball.y && _ball.y < players[id2].y + hitLength){
+  if( state.players[state.left].y - hitLength <_ball.y && 
+      _ball.y<state.players[state.left].y + hitLength ){
     stepUp = _ball.dx>0 ? 20 : -20;
     _ball.dx = -(_ball.dx+stepUp); 
-    _ball.x = globals.div-globals.ballRadius;
+    _ball.x = globals.block.width + globals.ballRadius;
 
-    relativeY = _ball.y - players[id2].y;
+    relativeY = _ball.y - state.players[state.left].y ;
     _ball.dy = _ball.dy + relativeY/15;
+    changeColor();
   }
   else{
     _ball.x=globals.div/2; 
     _ball.y=globals.div/2;
     _ball.dy = 0;
     _ball.dx = -100;
-    if(state.mode==2){
-      players[id1].score++;
+    if(state.mode==3)
+      state.players[state.right].score++;
+    pauseBall();
+  }
+}
+
+function rightHit(_ball){
+  if(state.mode==1){ //single player (left)
+    stepUp = _ball.dx>0 ? 20 : -20;
+    _ball.dx = -(_ball.dx+stepUp); 
+    _ball.x = globals.div -globals.ballRadius;
+    changeColor();
+    return 0;
+  }
+
+  hitLength = globals.block.height/2 + globals.ballRadius;
+  if( _ball.y > state.players[state.right].y - hitLength && 
+      _ball.y < state.players[state.right].y + hitLength){
+    stepUp = _ball.dx>0 ? 20 : -20;
+    _ball.dx = -(_ball.dx+stepUp); 
+    _ball.x = globals.div-globals.ballRadius - globals.block.width;
+
+    relativeY = _ball.y - state.players[state.right].y;
+    _ball.dy = _ball.dy + relativeY/15;
+    changeColor();
+  }
+  else{
+    _ball.x=globals.div/2; 
+    _ball.y=globals.div/2;
+    _ball.dy = 0;
+    _ball.dx = 100;
+    if(state.mode==3){
+      state.players[state.left].score++;
     }
-    state.ball.paused=1; pause();
+    pauseBall();
   }
 }
 
@@ -144,26 +207,36 @@ function updateBall(){
           nextX: state.ball.x + globals.dx, // new positions after step is applied
           nextY: state.ball.y + globals.dy};//
   
+  if(ball.x < 1000  ){
+    console.log("mode = "+ state.mode);
+    console.log({ball});
+  }
+  /* let pause = false; */
+  let lBoundary = (state.mode == 2 ) ? globals.ballRadius : (globals.block.width+globals.ballRadius);
+  let rBoundary = (state.mode == 1 ) ? (globals.div-globals.ballRadius) : (globals.div-globals.block.width - globals.ballRadius) ;
+
   //check left boundary
-  if (ball.nextX < globals.block.width+globals.ballRadius/2)
-    leftHit(ball);
+  if (ball.nextX < lBoundary)
+    {leftHit(ball); /* pause = true; */}
 
   //check right boundary
-  if (ball.nextX > (state.mode==2 ? globals.div-globals.block.width : globals.div-globals.ballRadius/2))
+  else if (ball.nextX > rBoundary)
     rightHit(ball);
 
   //check bottom boundary
-  if (ball.nextY > globals.div-globals.ballRadius){
-    y = globals.div - globals.ballRadius;
+  else if (ball.nextY > globals.div-globals.ballRadius){
+    ball.y = globals.div - globals.ballRadius;
     ball.dy = -ball.dy; 
     ball.dx += 20;
+    changeColor();
   }
 
   //check top boundary
   else if(ball.nextY < globals.ballRadius){
-    y = globals.ballRadius;
+    ball.y = globals.ballRadius;
     ball.dy = -ball.dy;
     ball.dx += 20;
+    changeColor();
   }
   
   // non edge cases
@@ -176,14 +249,23 @@ function updateBall(){
   state.ball.y = ball.y;
   globals.dx = ball.dx;
   globals.dy = ball.dy;
+
+  /* if(pause)
+    pauseBall(); */
+
+
+}
+
+function changeColor(){
+  bounceCnt ++;
+  state.colors = colorSets[bounceCnt%colorSets.length];
 }
 
 // send out 60 times/sec the state to the 2 players
 setInterval(function() {
   if(state.mode){
     if(state.ball.paused == 0)
-      updateBall();	
-    state['players']= players; 
+      updateBall();
     io.sockets.emit('state', state);
   }
 }, 1000 / 60);

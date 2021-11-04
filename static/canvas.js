@@ -1,12 +1,13 @@
 var socket = io();
 
 var globals = {div: 20000,                        // virtual grid size
-			   ballRadius: 500,                   // virtual ball radius (will be translated in canvas.js)
+			   ballRadius: 200,                   // virtual ball radius (will be translated in canvas.js)
 			   block: {width:400, height:3000}};  // virtual block size (will be translated in canvas.js)
 var gameCanvas = document.createElement("canvas");
 var context = gameCanvas.getContext("2d");
 var WIDTH = window.innerWidth-10;
 var HEIGHT = window.innerHeight-10;
+var colors = {};
 
 // the canvas for the game
 var gameArea = {
@@ -21,58 +22,53 @@ var gameArea = {
 	clear: function(){
 		context.clearRect(0,0, WIDTH, HEIGHT);
 	},
-	singlePlayer: function(){
-		ctx = context;
-		ctx.textAlign = "center";
-		ctx.font = "50px Russo One";
-		ctx.fillText("MIKE'S EXISTENTIAL PONG", WIDTH/2, HEIGHT/5);
-		
-		ctx.font = "20px Russo One";
-		ctx.fillText("It seems you are the only player. You didn't ask for it,", WIDTH/2, HEIGHT*0.4);
-		ctx.fillText("but you must play in Sisyphus mode", WIDTH/2, HEIGHT*0.5);
-		
-		var timer = setTimeout(function(){
-			playerState.mode=1;
-		}, 5000)
-	},
-	multiPlayer: function(){
-		ctx = context;
-		ctx.font = "50px Russo One";
-		ctx.textAlign = "center"
-		ctx.fillText("MIKE'S EXISTENTIAL PONG", this.canvas.width/2, this.canvas.height/5);
-
-		ctx.font = "20px Russo One";
-		ctx.fillText("It seems there are  2 players now. Hades does not", this.canvas.width/2, this.canvas.height*0.4);
-		ctx.fillText("discriminate lol. Play your meaningless game", this.canvas.width/2, this.canvas.height*0.6);
-		
-		var timer = setTimeout(function(){
-			playerState.mode=2;
-		}, 5000)
+	getReady: function(){
+		if(playerState.playing){
+			ctx = context;
+			ctx.textAlign = "center";
+			ctx.fillStyle = colors.fg
+			ctx.font = "50px Russo One";
+			ctx.fillText("MIKE'S PONG GAME", WIDTH/2, HEIGHT/5);
+			
+			ctx.font = "20px Russo One";
+			ctx.fillText("WAITING ON THE OTHER PLAYER", WIDTH/2, HEIGHT*0.4);
+		}
+		else{
+			ctx = context;
+			ctx.textAlign = "center";
+			ctx.fillStyle = colors.fg
+			ctx.font = "50px Russo One";
+			ctx.fillText("MIKE'S PONG GAME", WIDTH/2, HEIGHT/5);
+			
+			ctx.font = "20px Russo One";
+			ctx.fillText("CLICK [SPACE] TO BEGIN", WIDTH/2, HEIGHT*0.4);
+			playerState.playing = 0;	
+		}
 	}
-
 }
 
 function startGame(){
-	console.log("canvas.js: Entered startGame()");
 	gameArea.initialize();
-	var rect=gameCanvas.getBoundingClientRect();
-	console.log("screen = %i,%i",WIDTH, HEIGHT);
-
 }
 
-function player(x, y){
-	this.screenPos = {x: x, y: y}; // server coordinates
+function player(side, y){
 	this.translatedBlockHeight = HEIGHT*globals.block.height/globals.div;
 	this.translatedBlockWidth = WIDTH*globals.block.width/globals.div;
+	if(side == "left")
+		this.x = 0;
+	if(side=="right")
+	  this.x=WIDTH-this.translatedBlockWidth;
+	playerState.side = side;
+	this.screenPos = {x: this.x, y: y}; // server coordinates
+	/* this.translatedBlockHeight = HEIGHT*globals.block.height/globals.div;
+	this.translatedBlockWidth = WIDTH*globals.block.width/globals.div; */
 	this.update = function(){
 		ctx = gameArea.context;
-		ctx.fillStyle = "red";
+		ctx.fillStyle = colors.fg;
 		if(this.screenPos.y < this.translatedBlockHeight/2)
 			{this.screenPos.y = this.translatedBlockHeight/2;}
 		else if(this.screenPos.y > HEIGHT-this.translatedBlockHeight/2) 
 			{this.screenPos.y = HEIGHT - this.translatedBlockHeight/2;}
-		
-		//xx = (this.screenPos.x==0 ? this.translatedBlockWidth : WIDTH-4*this.translatedBlockWidth);
 		ctx.fillRect(this.screenPos.x, this.screenPos.y-this.translatedBlockHeight/2, this.translatedBlockWidth, this.translatedBlockHeight);
 	}
 }
@@ -80,24 +76,29 @@ function player(x, y){
 function ball(x, y){
 	this.virtualPos = {x: x, y: y}; // server coordinates
 	this.translatedPos = {x: x*WIDTH/globals.div , y: y*HEIGHT/globals.div};
-	this.radius = globals.ballRadius*HEIGHT/globals.div;
-	
+	this.radius = globals.ballRadius*WIDTH/globals.div;
 	this.draw = function(){
+		let correction = 0;
+		if(y==200)
+			correction = this.radius - globals.ballRadius*HEIGHT/globals.div;
+		else if (y == globals.div - globals.ballRadius)
+			correctedY = 	this.correction = globals.ballRadius*HEIGHT/globals.div - this.radius;
+
 		ctx = gameArea.context;
-		ctx.fillStyle = "black";
+		ctx.fillStyle = colors.fg;
 		ctx.beginPath();
-		ctx.arc(this.translatedPos.x ,this.translatedPos.y , this.radius ,0 ,2*Math.PI);
+		ctx.arc(this.translatedPos.x ,this.translatedPos.y + correction, this.radius ,0 ,2*Math.PI);
 		ctx.stroke();
 		ctx.fill();
+
 	}
 }
  
 function drawScore(score){
-	//console.log("canvas.js: Entered drawScore()");
 	ctx = gameArea.context;
 	ctx.textAlign = "center";
 	ctx.font = "100px Russo One";
-	ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+	ctx.fillStyle = colors.fg;
 	if(score.length > 1){
 		ctx.fillText(score[0], WIDTH/4, 8/10*HEIGHT);
 		ctx.fillText(score[1], 3/4*WIDTH, 8/10*HEIGHT);
@@ -107,15 +108,25 @@ function drawScore(score){
 // the player state consists of the mode the game(and by extension
 // the player) is in, and his mouse y-coordinate.
 var playerState = {};
-playerState.mode = 0;
+playerState.playing = 0;
+
+document.addEventListener('keydown', function(event){
+	console.log("key press: " + event.which);
+	key = event.which;
+	if(key == 38)
+		playerState.y -= 1500;
+	else if(key == 40)
+		playerState.y += 1500;
+	else if(key == 32)
+		playerState.playing = 1;
+},true);
+
 gameCanvas.addEventListener('mousemove', function(event){
 	//console.log("mouse : %i, %i", event.clientX, event.clientY);
-	var rect=gameCanvas.getBoundingClientRect();
 	playerState.y = Math.round(event.clientY/(HEIGHT)*globals.div);
 });
 
 // notify server about new player entering
-console.log("new player width = %i", WIDTH);
 socket.emit('new player');
 
 // send player info to server 60 times/sec
@@ -127,12 +138,12 @@ setInterval(function() {
 // clear the window and draw updated state
 socket.on('state', function(state) {
 	gameArea.clear();
-
+	//console.log({state});
+	
+	colors = state.colors;
+	gameCanvas.style.background = colors.bg;
 	if(state.mode==0){
-		if(Object.keys(state.players).length == 2)
-			gameArea.multiPlayer();
-		else
-			gameArea.singlePlayer();
+		gameArea.getReady();
 		return;
 	}
 
@@ -141,14 +152,11 @@ socket.on('state', function(state) {
 	gameBall.draw();	
 	
 	// draw players
-	var users = [], score=[];
-	var i=0;
-	for (var id in state.players){
-		var temp = state.players[id];
-		users.push(new player(i*(WIDTH-30), HEIGHT*temp.y/globals.div)) ;
-		users[i].update();
-		score.push(temp.score)
-		i++;
+	var users = {}, score=[];
+	for (p in state.players){
+		users[state.players[p].side] = new player(state.players[p].side, HEIGHT*state.players[p].y/globals.div) ;
+		users[state.players[p].side].update();
+		score.push(state.players[p].score);
 	}
 
 	//draw score
