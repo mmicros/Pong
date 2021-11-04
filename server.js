@@ -39,9 +39,6 @@ var colorSets = [
   {fg:"teal",      bg:"gold"},
   {fg:"pink",      bg:"brown"},
   {fg:"maroon",    bg:"goldenrod"}
-  /* {fg:"white", bg:"black"},
-  {fg:"white", bg:"black"},
-  {fg:"white", bg:"black"}, */
 ];
 
 var state = {ball :{x:globals.div/2, 
@@ -78,17 +75,20 @@ io.on('connection', function(socket)
       state.players[socketId] = { y:0, score:0, playing:0, side:"right"};	
       pauseGame();
     }
+
+    //spectators
     else{
       console.log("creating spectator");
       state.players[socketId] = { y:0, score:0, playing:0, side:"none"};	
 
     }
 
-    console.log({state});
+    // view players
+    /* console.log({state});
     for(i in state.players)
-      console.log(state.players[i]);
+      console.log(state.players[i]); */
     io.sockets.emit('state', state);
-    //spectators
+    
     
   });
   
@@ -113,14 +113,13 @@ io.on('connection', function(socket)
   });
   
   socket.on('state', function(data) {
+    if(data.side == "none")
+      return;
     if(Object.keys(state.players).length){
       state.players[socketId].y = data.y;
       state.players[socketId].playing = data.playing;
     }
     
-    console.log("mode = "+state.mode);
-    console.log("num of players: "+Object.keys(state.players).length);
-
     switch(Object.keys(state.players).length){
       case 0:
         state.mode = 0;
@@ -140,9 +139,7 @@ io.on('connection', function(socket)
         else
           state.mode = 0;
         break;
-    }
-    console.log("mode after= "+state.mode);
-  
+    }  
   });
 });
 
