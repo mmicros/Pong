@@ -1,6 +1,8 @@
 # Pong
 Simple pong game to learn more Javascript/NodeJS.
 
+## Wanna Play Now ?
+https://mmicros-pong.herokuapp.com/
 
 ## Helpful Links
 Some helpful info to get acquainted with the canvas element as well as multiplayer user handling:
