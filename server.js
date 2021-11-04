@@ -29,8 +29,8 @@ var globals = { div: 20000,                          // virtual grid size
                 block: {width:400, height:3000}};    // virtual block size (will be translated in canvas.js)
 
 var colorSets = [
-  {fg:"white", bg:"black"},
-  {fg:"black", bg:"white"}
+  {fg:"turquoise", bg:"orangered"},
+  {fg:"plum", bg:"tomato"}
   /* {fg:"white", bg:"black"},
   {fg:"white", bg:"black"},
   {fg:"white", bg:"black"}, */
@@ -146,8 +146,8 @@ function leftHit(_ball){
   }
 
   hitLength = globals.block.height/2 + globals.ballRadius;
-  if( state.players[state.left].y - hitLength <_ball.y && 
-      _ball.y<state.players[state.left].y + hitLength ){
+  if( _ball.y > state.players[state.left].y - hitLength  && 
+      _ball.y < state.players[state.left].y + hitLength ){
     stepUp = _ball.dx>0 ? 20 : -20;
     _ball.dx = -(_ball.dx+stepUp); 
     _ball.x = globals.block.width + globals.ballRadius;
@@ -207,10 +207,10 @@ function updateBall(){
           nextX: state.ball.x + globals.dx, // new positions after step is applied
           nextY: state.ball.y + globals.dy};//
   
-  if(ball.x < 1000  ){
+  /* if(ball.x < 1000  ){
     console.log("mode = "+ state.mode);
     console.log({ball});
-  }
+  } */
   /* let pause = false; */
   let lBoundary = (state.mode == 2 ) ? globals.ballRadius : (globals.block.width+globals.ballRadius);
   let rBoundary = (state.mode == 1 ) ? (globals.div-globals.ballRadius) : (globals.div-globals.block.width - globals.ballRadius) ;
