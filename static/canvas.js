@@ -31,7 +31,8 @@ var gameArea = {
 			ctx.fillText("MIKE'S PONG GAME", WIDTH/2, HEIGHT/5);
 			
 			ctx.font = "20px Russo One";
-			ctx.fillText("WAITING ON THE OTHER PLAYER", WIDTH/2, HEIGHT*0.4);
+			ctx.fillText("WAITING ON THE OTHER PLAYER", WIDTH/2, HEIGHT*0.4);			
+			ctx.fillText(playerState.side, WIDTH/2, HEIGHT*0.5);
 		}
 		else{
 			ctx = context;
@@ -42,6 +43,7 @@ var gameArea = {
 			
 			ctx.font = "20px Russo One";
 			ctx.fillText("CLICK [SPACE] TO BEGIN", WIDTH/2, HEIGHT*0.4);
+			ctx.fillText(playerState.side, WIDTH/2, HEIGHT*0.5);
 			playerState.playing = 0;	
 		}
 	}
@@ -85,6 +87,7 @@ function ball(x, y){
 			correctedY = 	this.correction = globals.ballRadius*HEIGHT/globals.div - this.radius;
 
 		ctx = gameArea.context;
+		ctx.strokeStyle = colors.fg;
 		ctx.fillStyle = colors.fg;
 		ctx.beginPath();
 		ctx.arc(this.translatedPos.x ,this.translatedPos.y + correction, this.radius ,0 ,2*Math.PI);
@@ -139,7 +142,10 @@ setInterval(function() {
 socket.on('state', function(state) {
 	gameArea.clear();
 	//console.log({state});
-	
+	if(state.players.hasOwnProperty(socket.id)){
+		playerState.playing = state.players[socket.id].playing;
+		playerState.side = state.players[socket.id].side;
+	}
 	colors = state.colors;
 	gameCanvas.style.background = colors.bg;
 	if(state.mode==0){
@@ -154,6 +160,8 @@ socket.on('state', function(state) {
 	// draw players
 	var users = {}, score=[];
 	for (p in state.players){
+		if(state.players[p].side=="none")
+		  continue;
 		users[state.players[p].side] = new player(state.players[p].side, HEIGHT*state.players[p].y/globals.div) ;
 		users[state.players[p].side].update();
 		score.push(state.players[p].score);

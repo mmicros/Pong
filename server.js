@@ -30,7 +30,15 @@ var globals = { div: 20000,                          // virtual grid size
 
 var colorSets = [
   {fg:"turquoise", bg:"orangered"},
-  {fg:"plum", bg:"tomato"}
+  {fg:"plum",      bg:"DarkBlue"},  
+  {fg:"gold",      bg:"teal"},
+  {fg:"brown",     bg:"pink"},
+  {fg:"goldenrod", bg:"maroon"},
+  {fg:"orangered", bg:"turquoise"},
+  {fg:"DarkBlue",  bg:"plum"},  
+  {fg:"teal",      bg:"gold"},
+  {fg:"pink",      bg:"brown"},
+  {fg:"maroon",    bg:"goldenrod"}
   /* {fg:"white", bg:"black"},
   {fg:"white", bg:"black"},
   {fg:"white", bg:"black"}, */
@@ -54,7 +62,6 @@ io.on('connection', function(socket)
   socket.on('new player', function() 
   { 
     console.log("player entered: ");
-    pauseGame();
     
     // first player to enter
     if(Object.keys(state.players).length == 0){
@@ -69,23 +76,38 @@ io.on('connection', function(socket)
       console.log("creating right player");
       state.right = socketId;
       state.players[socketId] = { y:0, score:0, playing:0, side:"right"};	
+      pauseGame();
+    }
+    else{
+      console.log("creating spectator");
+      state.players[socketId] = { y:0, score:0, playing:0, side:"none"};	
+
     }
 
     console.log({state});
     for(i in state.players)
       console.log(state.players[i]);
     io.sockets.emit('state', state);
-    // else spectators? 
+    //spectators
+    
   });
   
   socket.on('disconnect', function() {
     console.log("player left" );
-    delete state.players[socketId];
+
+    //special case: spectator leaves
+    if(state.players[socketId].side == "none"){
+      delete state.players[socketId];
+      return;
+    }
+
+    //case: player leaves
+    delete state.players[socketId]; 
+    pauseGame();
     if(socketId == state.left)
       state.left = 0;
     else if (socketId == state.right)
       state.right = 0;
-    pauseGame();
     io.sockets.emit('state', state);
 
   });
@@ -96,9 +118,9 @@ io.on('connection', function(socket)
       state.players[socketId].playing = data.playing;
     }
     
-/*     console.log("mode = "+state.mode);
+    console.log("mode = "+state.mode);
     console.log("num of players: "+Object.keys(state.players).length);
- */
+
     switch(Object.keys(state.players).length){
       case 0:
         state.mode = 0;
@@ -119,6 +141,8 @@ io.on('connection', function(socket)
           state.mode = 0;
         break;
     }
+    console.log("mode after= "+state.mode);
+  
   });
 });
 
@@ -130,10 +154,22 @@ function pauseBall(){
   },1500)
 }
 
+function resetBall(b,direction="left"){
+  b.x=globals.div/2; 
+  b.y=globals.div/2;
+  b.dy = 0;
+  b.dx = direction=="left" ? -100 : 100;
+  pauseBall();
+}
+
 function pauseGame(){
+  console.log("pausing game");
+  resetBall(state.ball);
   state.mode = 0;
-  for(p in state.players)
+  for(p in state.players){
     state.players[p].playing = 0;
+    console.log(state.players[p].side + ":" + state.players[p].playing);
+  }
 }
 
 function leftHit(_ball){ 
@@ -157,13 +193,9 @@ function leftHit(_ball){
     changeColor();
   }
   else{
-    _ball.x=globals.div/2; 
-    _ball.y=globals.div/2;
-    _ball.dy = 0;
-    _ball.dx = -100;
+    resetBall(_ball);
     if(state.mode==3)
       state.players[state.right].score++;
-    pauseBall();
   }
 }
 
@@ -188,14 +220,10 @@ function rightHit(_ball){
     changeColor();
   }
   else{
-    _ball.x=globals.div/2; 
-    _ball.y=globals.div/2;
-    _ball.dy = 0;
-    _ball.dx = 100;
+    resetBall(_ball,"right")
     if(state.mode==3){
       state.players[state.left].score++;
     }
-    pauseBall();
   }
 }
 
