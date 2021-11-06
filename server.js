@@ -58,10 +58,10 @@ io.on('connection', function(socket)
   let socketId = socket.id;
   socket.on('new player', function() 
   { 
-    console.log("player entered: ");
+    console.log("a player entered the game ");
     
     // first player to enter
-    if(Object.keys(state.players).length == 0){
+    if(state.left==0){
       console.log("creating left player");
       state.left = socketId;
       state.players[socketId] = { y:0, score:0, playing:0, side:"left"};
@@ -69,7 +69,7 @@ io.on('connection', function(socket)
     }
 
     // second player to enter
-    else if(Object.keys(state.players).length == 1){
+    else if(state.right==0){
       console.log("creating right player");
       state.right = socketId;
       state.players[socketId] = { y:0, score:0, playing:0, side:"right"};	
@@ -79,29 +79,31 @@ io.on('connection', function(socket)
     //spectators
     else{
       console.log("creating spectator");
-      state.players[socketId] = { y:0, score:0, playing:0, side:"none"};	
+      state.players[socketId] = { y:0, score:0, playing:0, side:"spectator"};	
 
     }
 
     // view players
-    /* console.log({state});
+    console.log({state});
     for(i in state.players)
-      console.log(state.players[i]); */
+      console.log(state.players[i]);
     io.sockets.emit('state', state);
     
     
   });
   
   socket.on('disconnect', function() {
-    console.log("player left" );
+    console.log("a player exited the game" );
 
-    //special case: spectator leaves
-    if(state.players[socketId].side == "none"){
+    //special case: spectator exits
+    if(state.players[socketId].side == "spectator"){
       delete state.players[socketId];
+      for(i in state.players)
+        console.log(state.players[i]);
       return;
     }
 
-    //case: player leaves
+    //case: player exits
     delete state.players[socketId]; 
     pauseGame();
     if(socketId == state.left)
@@ -110,17 +112,28 @@ io.on('connection', function(socket)
       state.right = 0;
     io.sockets.emit('state', state);
 
+    for(i in state.players)
+      console.log(state.players[i]);
   });
   
   socket.on('state', function(data) {
-    if(data.side == "none")
+    if(data.side == "spectator")
       return;
     if(Object.keys(state.players).length){
       state.players[socketId].y = data.y;
       state.players[socketId].playing = data.playing;
     }
+
+    //actual amount of players
+    var numOfPlayers = Object.keys(state.players).length;
+    for(p in state.players)
+      if(state.players[p].side == "spectator")
+        numOfPlayers--;
     
-    switch(Object.keys(state.players).length){
+    console.log("num of players = "+ numOfPlayers);
+    console.log(socketId + ":" + state.players[socketId]);
+  
+    switch(numOfPlayers){
       case 0:
         state.mode = 0;
         break;

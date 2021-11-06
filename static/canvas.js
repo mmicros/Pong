@@ -62,9 +62,9 @@ function player(side, y){
 	  this.x=WIDTH-this.translatedBlockWidth;
 	playerState.side = side;
 	this.screenPos = {x: this.x, y: y}; // server coordinates
-	/* this.translatedBlockHeight = HEIGHT*globals.block.height/globals.div;
-	this.translatedBlockWidth = WIDTH*globals.block.width/globals.div; */
 	this.update = function(){
+		//if(playerState.side=="spectator")
+		  console.log("drawing player for spector");
 		ctx = gameArea.context;
 		ctx.fillStyle = colors.fg;
 		if(this.screenPos.y < this.translatedBlockHeight/2)
@@ -112,6 +112,7 @@ function drawScore(score){
 // the player) is in, and his mouse y-coordinate.
 var playerState = {};
 playerState.playing = 0;
+playerState.side = "spectator";
 
 document.addEventListener('keydown', function(event){
 	console.log("key press: " + event.which);
@@ -126,6 +127,7 @@ document.addEventListener('keydown', function(event){
 
 gameCanvas.addEventListener('mousemove', function(event){
 	//console.log("mouse : %i, %i", event.clientX, event.clientY);
+
 	playerState.y = Math.round(event.clientY/(HEIGHT)*globals.div);
 });
 
@@ -141,7 +143,7 @@ setInterval(function() {
 // clear the window and draw updated state
 socket.on('state', function(state) {
 	gameArea.clear();
-	//console.log({state});
+	console.log({state});
 	if(state.players.hasOwnProperty(socket.id)){
 		playerState.playing = state.players[socket.id].playing;
 		playerState.side = state.players[socket.id].side;
@@ -160,11 +162,11 @@ socket.on('state', function(state) {
 	// draw players
 	var users = {}, score=[];
 	for (p in state.players){
-		if(state.players[p].side=="none")
-		  continue;
-		users[state.players[p].side] = new player(state.players[p].side, HEIGHT*state.players[p].y/globals.div) ;
-		users[state.players[p].side].update();
-		score.push(state.players[p].score);
+		if(state.players[p].side!="spectator"){
+		  users[state.players[p].side] = new player(state.players[p].side, HEIGHT*state.players[p].y/globals.div) ;
+		  users[state.players[p].side].update();
+		  score.push(state.players[p].score);
+		}
 	}
 
 	//draw score
